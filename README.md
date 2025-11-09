@@ -1,39 +1,53 @@
 # GAP — Generative Asset Package
 
-**Goal:** Prove that structured 3D assets (USD/GLB) can be packaged as GAPs to preserve geometry + texture identity across diffusion-generated multi-view frames.
+**Derivative project from TripoSR - focused on proving diffusion conditioning preserves 3D asset identity**
 
-## Project Structure
+## Quick Context
 
+This project validates that:
+1. Structured 3D assets (USD/GLB) can be packaged as GAPs
+2. GAP conditioning (depth/normal/mask/reference) preserves geometry + texture
+3. Across 360° diffusion-generated orbits
+
+## Success Criteria
+- Silhouette IoU ≥ 0.80 average
+- Texture SSIM ≥ 0.65 median  
+- Visual consistency across orbit
+
+## Development Approach
+**Diffusion-first:** Validate SDXL + ControlNet pipeline before building GAP tooling
+
+## Stack
+- SDXL + Multi-ControlNet (huggingface/diffusers)
+- IP-Adapter (tencent-ailab)
+- Blender Python API (G-buffers)
+- Trimesh (3D processing)
+- LPIPS + CLIP (metrics)
+
+## Structure
 ```
 GAP/
-├── assets/          # Input 3D assets (GLB/USD)
-├── tools/           # GAP creation & evaluation
-├── diffusion/       # SDXL + ControlNet pipeline
-├── docker/          # RunPod serverless endpoint
-├── tests/           # Demo scripts
-└── output/          # Generated GAPs, renders, metrics
+├── assets/       # Test GLB/USD files
+├── tools/        # GAP creator, evaluator
+├── diffusion/    # SDXL + ControlNet wrapper
+├── docker/       # RunPod endpoint
+├── tests/        # Demo scripts
+└── output/       # Generated results
 ```
 
-## Quick Start
+## Getting Started
 
 ```bash
-# 1. Install dependencies
 cd /workspaces/GAP
+
+# Install dependencies
 python tests/install_dependencies.py
 
-# 2. Test installation
-python tests/test_installation.py
-
-# 3. Download test assets
+# Download test assets
 python tests/download_assets.py
 
-# 4. Run fast-track demo
+# Run demo
 python tests/demo_fasttrack.py
 ```
 
-## Success Criteria
-
-- ✅ Silhouette IoU ≥ 0.80 average
-- ✅ Texture SSIM ≥ 0.65 median
-- ✅ Visual consistency across 360° orbit
-
+See `docs/CONTEXT.md` for full conversation history.

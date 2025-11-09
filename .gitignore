@@ -1,28 +1,12 @@
-# Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-.venv/
-*.egg-info/
-
-# Project specific
 .env
 *.log
 output/
 assets/*.glb
 assets/*.usd
-
-# Models (too large)
 models/
 *.pth
 *.safetensors
-*.ckpt
-
-# Temp files
 tmp/
 .cache/
-.DS_Store
