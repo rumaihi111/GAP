@@ -1,0 +1,34 @@
+# Core dependencies
+torch>=2.1.0
+torchvision>=0.16.0
+diffusers>=0.25.0
+transformers>=4.36.0
+accelerate>=0.25.0
+safetensors>=0.4.1
+
+# 3D processing
+trimesh[easy]>=4.0.0
+numpy>=1.24.0
+
+# Image processing
+opencv-python>=4.8.0
+pillow>=10.0.0
+
+# Diffusion enhancements
+xformers>=0.0.23
+controlnet-aux>=0.0.7
+
+# Evaluation metrics
+lpips>=0.1.4
+scikit-image>=0.21.0
+
+# Utilities
+tqdm>=4.66.0
+omegaconf>=2.3.0
+einops>=0.7.0
+
+# RunPod
+runpod>=1.5.0
+
+# CLIP (for similarity)
+git+https://github.com/openai/CLIP.git
