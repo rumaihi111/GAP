@@ -7,13 +7,38 @@ safetensors>=0.4.1
 trimesh[easy]>=4.0.0
 numpy>=1.24.0
 opencv-python>=4.8.0
-pillow>=10.0.0
+Pillow>=10.0.0
+imageio>=2.31.0
+imageio-ffmpeg>=0.4.9
 xformers>=0.0.23
 controlnet-aux>=0.0.7
 lpips>=0.1.4
-scikit-image>=0.21.0
+scikit-image>=0.22.0
 tqdm>=4.66.0
 omegaconf>=2.3.0
 einops>=0.7.0
-runpod>=1.5.0
+runpod>=1.6.0
 git+https://github.com/openai/CLIP.git
+# Core 3D and USD
+usd-core>=23.11
+
+# RunPod serverless
+runpod>=1.6.0
+
+# Image processing
+opencv-python>=4.8.0
+Pillow>=10.0.0
+imageio>=2.31.0
+imageio-ffmpeg>=0.4.9
+scikit-image>=0.22.0
+
+# Metrics
+lpips>=0.1.4
+scikit-image>=0.22.0
+
+# Utilities
+numpy>=1.24.0
+matplotlib>=3.8.0
+tqdm>=4.66.0
+pyyaml>=6.0
+requests>=2.31.0
