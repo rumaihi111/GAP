@@ -137,6 +137,15 @@ def handler(event):
         target_width = depth_img.width
         target_height = depth_img.height
         
+        # Limit resolution for 48GB GPU (prevents OOM during VAE decode)
+        MAX_PIXELS = 1024 * 1024  # 1MP max to ensure 48GB GPU can handle VAE
+        current_pixels = target_width * target_height
+        if current_pixels > MAX_PIXELS:
+            scale = (MAX_PIXELS / current_pixels) ** 0.5
+            target_width = int(target_width * scale)
+            target_height = int(target_height * scale)
+            print(f"📐 Scaling down to {target_width}x{target_height} ({target_width*target_height/1e6:.1f}MP) for GPU memory")
+        
         # Resize to nearest multiple of 8 (required by SDXL)
         target_width = (target_width // 8) * 8
         target_height = (target_height // 8) * 8
