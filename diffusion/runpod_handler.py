@@ -157,15 +157,6 @@ def handler(event):
         cn_scales = input_data.get("controlnet_conditioning_scale", [1.2, 1.0])
         ip_scale = input_data.get("ip_adapter_scale", 0.8)
         
-        # Set IP-Adapter scale if available
-        if hasattr(pipe, 'image_projection_layers') and pipe.image_projection_layers is not None:
-            pipe.set_ip_adapter_scale(ip_scale)
-            if reference_img:
-                generation_kwargs["ip_adapter_image"] = reference_img
-                print(f"✅ Using IP-Adapter with reference image")
-        else:
-            print("⚠️ IP-Adapter not available, using ControlNet only")
-        
         # Setup generator
         generator = torch.Generator(device="cuda").manual_seed(seed)
         
@@ -185,6 +176,15 @@ def handler(event):
             "height": target_height,
             "width": target_width
         }
+        
+        # Add IP-Adapter if available
+        if hasattr(pipe, 'image_projection_layers') and pipe.image_projection_layers is not None:
+            pipe.set_ip_adapter_scale(ip_scale)
+            if reference_img:
+                generation_kwargs["ip_adapter_image"] = reference_img
+                print(f"✅ Using IP-Adapter with reference image")
+        else:
+            print("⚠️ IP-Adapter not available, using ControlNet only")
         
         result = pipe(**generation_kwargs).images[0]
         
