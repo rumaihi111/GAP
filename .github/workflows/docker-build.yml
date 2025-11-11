@@ -25,13 +25,14 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
     
-    - name: Build and push
+    - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
         context: .
         file: ./docker/Dockerfile.runpod
         platforms: linux/amd64
         push: true
-        tags: orumaihi/gap-diffusion:v3-models-cached
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        tags: |
+          orumaihi/gap-diffusion:latest
+          orumaihi/gap-diffusion:v3-models-cached
+          orumaihi/gap-diffusion:v4-ipadapter-fix
