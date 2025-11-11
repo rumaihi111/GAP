@@ -52,14 +52,19 @@ def load_models():
         variant="fp16"
     ).to("cuda")
     
-    # Load IP-Adapter for reference image
-    print("📥 Loading IP-Adapter...")
-    pipe.load_ip_adapter(
-        "h94/IP-Adapter",
-        subfolder="sdxl_models",
-        weight_name="ip-adapter_sdxl.bin"
-    )
-    pipe.set_ip_adapter_scale(0.8)
+    # Try to load IP-Adapter, but don't fail if it doesn't work
+    try:
+        print("📥 Loading IP-Adapter...")
+        pipe.load_ip_adapter(
+            "h94/IP-Adapter",
+            subfolder="sdxl_models",
+            weight_name="ip-adapter_sdxl.bin"
+        )
+        pipe.set_ip_adapter_scale(0.8)
+        print("✅ IP-Adapter loaded successfully")
+    except Exception as e:
+        print(f"⚠️ IP-Adapter failed to load: {e}")
+        print("⚠️ Continuing without IP-Adapter (will use ControlNet only)")
     
     # Optimizations
     pipe.enable_model_cpu_offload()
@@ -152,8 +157,14 @@ def handler(event):
         cn_scales = input_data.get("controlnet_conditioning_scale", [1.2, 1.0])
         ip_scale = input_data.get("ip_adapter_scale", 0.8)
         
-        # Set IP-Adapter scale
-        pipe.set_ip_adapter_scale(ip_scale)
+        # Set IP-Adapter scale if available
+        if hasattr(pipe, 'image_projection_layers') and pipe.image_projection_layers is not None:
+            pipe.set_ip_adapter_scale(ip_scale)
+            if reference_img:
+                generation_kwargs["ip_adapter_image"] = reference_img
+                print(f"✅ Using IP-Adapter with reference image")
+        else:
+            print("⚠️ IP-Adapter not available, using ControlNet only")
         
         # Setup generator
         generator = torch.Generator(device="cuda").manual_seed(seed)
@@ -174,10 +185,6 @@ def handler(event):
             "height": target_height,
             "width": target_width
         }
-        
-        # Add IP-Adapter image if provided
-        if reference_img:
-            generation_kwargs["ip_adapter_image"] = reference_img
         
         result = pipe(**generation_kwargs).images[0]
         
