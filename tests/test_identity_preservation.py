@@ -3,23 +3,32 @@ Test Identity Preservation Across Scenes
 Proves GAP maintains asset identity in different contexts
 """
 import sys
-import os
+sys.path.insert(0, '.')
 from pathlib import Path
-import torch
+from PIL import Image
+from dataclasses import dataclass
+from datetime import datetime
 import base64
 import io
 import json
+import numpy as np
+import os
 import requests
 import time
-from PIL import Image
+import torch
 from dotenv import load_dotenv
-import numpy as np
 
 # Load environment
 load_dotenv()
 
 RUNPOD_API_KEY = os.getenv("RUNPOD_API_KEY")
 RUNPOD_ENDPOINT_ID = os.getenv("RUNPOD_ENDPOINT_ID")
+
+@dataclass
+class Scene:
+    name: str
+    environment: str
+    lighting: str
 
 def load_gap_package(gap_dir):
     """Load GAP package"""
@@ -51,40 +60,55 @@ def encode_image(img):
     img.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode()
 
-def resize_for_gpu(image: Image.Image, max_dimension: int = 1024) -> Image.Image:
-    """Resize image to fit GPU memory constraints"""
-    if image.width > max_dimension or image.height > max_dimension:
-        scale = max_dimension / max(image.width, image.height)
-        new_width = int(image.width * scale)
-        new_height = int(image.height * scale)
-        # Ensure multiple of 8 for SDXL
-        new_width = (new_width // 8) * 8
-        new_height = (new_height // 8) * 8
-        return image.resize((new_width, new_height), Image.LANCZOS)
-    return image
-
-def generate_with_gap(gap_package, scene_prompt, seed=42):
-    """
-    Generate image using GAP package conditioning
+def resize_for_gpu(image: Image.Image, max_dim: int = 896) -> Image.Image:
+    """Resize image to prevent GPU OOM, maintaining aspect ratio"""
+    if max(image.size) <= max_dim:
+        return image
     
-    Args:
-        gap_package: Loaded GAP package
-        scene_prompt: Scene/context description
-        seed: Random seed for reproducibility
-    """
-    # Prepare payload with GAP conditioning + reference image
+    scale = max_dim / max(image.size)
+    new_size = tuple(int(dim * scale) for dim in image.size)
+    # Ensure dimensions are multiples of 8 for SDXL
+    new_size = tuple((dim // 8) * 8 for dim in new_size)
+    
+    print(f"   📐 Resizing {image.size} → {new_size} for GPU memory")
+    return image.resize(new_size, Image.Resampling.LANCZOS)
+
+def generate_with_gap(gap: dict, scene: Scene, seed: int = 42, timeout: int = 240):
+    """Generate image using GAP package and scene description"""
+    
+    # Resize ALL images before sending to RunPod (896px max)
+    depth_map = resize_for_gpu(gap['depth'], max_dim=896)
+    normal_map = resize_for_gpu(gap['depth'], max_dim=896)  # Use depth as normal for now
+    reference_img = resize_for_gpu(gap['canonical'], max_dim=896)
+    
+    # Build enhanced prompt with detail emphasis
+    full_prompt = (
+        f"professional product photography, {gap['metadata']['object_name']}, "
+        f"{scene.name}, {scene.environment}, {scene.lighting}, "
+        f"photorealistic, highly detailed textures, sharp focus, "
+        f"realistic materials, accurate colors, visible product label, "
+        f"natural lighting, depth of field, 8k quality"
+    )
+    
+    negative_prompt = (
+        "blurry, low quality, distorted, cartoon, painting, sketch, "
+        "unrealistic colors, flat lighting, abstract, simplified, "
+        "deformed, ugly, bad anatomy"
+    )
+    
+    # Prepare payload with REBALANCED conditioning
     payload = {
         'input': {
-            "depth_image": encode_image(gap_package['depth']),
-            "normal_image": encode_image(gap_package['depth']),  # Using depth as placeholder
-            "reference_image": encode_image(gap_package['canonical']),  # KEY: Actual photo
-            "prompt": f"{gap_package['metadata']['object_name']}, {scene_prompt}, highly detailed, professional photography",
-            "negative_prompt": "blurry, distorted, low quality, different object, wrong product, deformed, ugly, bad anatomy, text, watermark, logo",
+            "depth_image": encode_image(depth_map),
+            "normal_image": encode_image(normal_map),  # Using depth as placeholder
+            "reference_image": encode_image(reference_img),  # KEY: Actual photo
+            "prompt": full_prompt,
+            "negative_prompt": negative_prompt,
             "seed": seed,
             "num_inference_steps": 50,  # More steps
             "guidance_scale": 7.5,
-            "controlnet_conditioning_scale": [1.2, 1.0],  # Stronger conditioning
-            "ip_adapter_scale": 0.8  # Strong reference image influence
+            "controlnet_conditioning_scale": [0.5, 0.4],  # WEAKENED - less geometric dominance
+            "ip_adapter_scale": 0.95  # STRENGTHENED - more appearance transfer
         }
     }
     
@@ -187,8 +211,7 @@ def test_identity_preservation():
     print(f"\n2️⃣ Generating in {len(scenes)} different scenes...")
     
     # Create timestamped output directory
-    import datetime
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = Path(f"output/identity_test_{timestamp}")
     output_dir.mkdir(parents=True, exist_ok=True)
     
@@ -199,7 +222,7 @@ def test_identity_preservation():
         
         try:
             # Generate
-            img = generate_with_gap(gap, scene, seed=42+i)
+            img = generate_with_gap(gap, Scene(name=scene, environment="", lighting=""), seed=42+i)
             generated_images.append(img)
             
             # Save
