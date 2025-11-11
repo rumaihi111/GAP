@@ -32,9 +32,9 @@ def load_models():
         torch_dtype=torch.float16
     )
     
-    print("📥 Loading ControlNet-Normal...")
-    controlnet_normal = ControlNetModel.from_pretrained(
-        "thibaud/controlnet-openpose-sdxl-1.0",  # Using as placeholder for normal
+    print("📥 Loading ControlNet-Canny...")
+    controlnet_canny = ControlNetModel.from_pretrained(
+        "diffusers/controlnet-canny-sdxl-1.0",
         torch_dtype=torch.float16
     )
     
@@ -42,7 +42,7 @@ def load_models():
     print("📥 Loading SDXL base model...")
     pipe = StableDiffusionXLControlNetPipeline.from_pretrained(
         "stabilityai/stable-diffusion-xl-base-1.0",
-        controlnet=[controlnet_depth, controlnet_normal],
+        controlnet=[controlnet_depth, controlnet_canny],
         torch_dtype=torch.float16,
         variant="fp16"
     ).to("cuda")

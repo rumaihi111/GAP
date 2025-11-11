@@ -13,16 +13,13 @@ RUN pip install --no-cache-dir \
     safetensors \
     Pillow \
     python-dotenv \
+    einops \
     git+https://github.com/tencent-ailab/IP-Adapter.git
 
 # Copy handler
 COPY diffusion/runpod_handler.py /app/handler.py
 
-# Copy test script
-COPY tests/test_diffusion_dummy.py /app/tests/test_diffusion_dummy.py
-
-# Models will download on first run (cold start ~60s)
-# This keeps Docker image small and buildable on low-memory machines
+# Models will download on first run (RunPod has enough disk space for this)
 
 # Run handler
 CMD ["python", "-u", "/app/handler.py"]
