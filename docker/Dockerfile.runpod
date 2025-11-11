@@ -16,6 +16,9 @@ RUN pip install --no-cache-dir \
     einops \
     git+https://github.com/tencent-ailab/IP-Adapter.git
 
+# Create cache directory on container disk
+RUN mkdir -p /app/hf_cache
+
 # Copy handler
 COPY diffusion/runpod_handler.py /app/handler.py
 

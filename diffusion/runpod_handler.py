@@ -6,15 +6,19 @@ import runpod
 import torch
 import base64
 import io
+import os
 import numpy as np
 from PIL import Image
 from diffusers import (
     StableDiffusionXLControlNetPipeline,
     ControlNetModel,
-    AutoPipelineForImage2Image,
     DPMSolverMultistepScheduler
 )
-from ip_adapter import IPAdapterXL
+
+# Set HuggingFace cache to container disk (has more space)
+os.environ['HF_HOME'] = '/app/hf_cache'
+os.environ['TRANSFORMERS_CACHE'] = '/app/hf_cache'
+os.environ['HF_HUB_CACHE'] = '/app/hf_cache'
 
 # Global pipeline (loaded once on cold start)
 pipe = None
@@ -24,6 +28,7 @@ def load_models():
     global pipe
     
     print("🔥 Loading models on cold start...")
+    print(f"📁 Cache directory: {os.environ['HF_HOME']}")
     
     # Load ControlNets
     print("📥 Loading ControlNet-Depth...")
@@ -34,7 +39,7 @@ def load_models():
     
     print("📥 Loading ControlNet-Canny...")
     controlnet_canny = ControlNetModel.from_pretrained(
-        "diffusers/controlnet-canny-sdxl-1.0",
+        "diffusers/controlnet-canny-sdxl-1.0-small",
         torch_dtype=torch.float16
     )
     
@@ -54,7 +59,7 @@ def load_models():
         subfolder="sdxl_models",
         weight_name="ip-adapter_sdxl.bin"
     )
-    pipe.set_ip_adapter_scale(0.8)  # Strong reference image influence
+    pipe.set_ip_adapter_scale(0.8)
     
     # Optimizations
     pipe.enable_model_cpu_offload()
@@ -119,11 +124,10 @@ def handler(event):
         # Decode conditioning images
         depth_img = decode_base64_image(input_data["depth_image"])
         normal_img = decode_base64_image(input_data["normal_image"])
-        reference_img = decode_base64_image(input_data.get("reference_image"))
         
-        # Preserve aspect ratio from reference
-        target_width = reference_img.width
-        target_height = reference_img.height
+        # Preserve aspect ratio from depth
+        target_width = depth_img.width
+        target_height = depth_img.height
         
         # Resize to nearest multiple of 8 (required by SDXL)
         target_width = (target_width // 8) * 8
@@ -132,7 +136,6 @@ def handler(event):
         # Resize conditioning images to match
         depth_img = depth_img.resize((target_width, target_height), Image.LANCZOS)
         normal_img = normal_img.resize((target_width, target_height), Image.LANCZOS)
-        reference_img = reference_img.resize((target_width, target_height), Image.LANCZOS)
         
         # Get parameters
         prompt = input_data.get("prompt", "professional product photography")
@@ -152,13 +155,12 @@ def handler(event):
         # Setup generator
         generator = torch.Generator(device="cuda").manual_seed(seed)
         
-        # Generate image with IP-Adapter + ControlNet
+        # Generate image with ControlNet
         print(f"🎨 Generating {target_width}x{target_height} with seed {seed}...")
         result = pipe(
             prompt=prompt,
             negative_prompt=negative_prompt,
             image=[depth_img, normal_img],
-            ip_adapter_image=reference_img,  # KEY: Reference image
             controlnet_conditioning_scale=cn_scales,
             control_guidance_start=0.0,
             control_guidance_end=1.0,
