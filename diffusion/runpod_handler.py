@@ -178,13 +178,20 @@ def handler(event):
         }
         
         # Add IP-Adapter if available
-        if hasattr(pipe, 'image_projection_layers') and pipe.image_projection_layers is not None:
-            pipe.set_ip_adapter_scale(ip_scale)
+        try:
+            # Check if IP-Adapter loaded and we have a reference image
             if reference_img:
-                generation_kwargs["ip_adapter_image"] = reference_img
-                print(f"✅ Using IP-Adapter with reference image")
-        else:
-            print("⚠️ IP-Adapter not available, using ControlNet only")
+                print(f"📸 Reference image provided: {reference_img.size}")
+                if hasattr(pipe, 'set_ip_adapter_scale'):
+                    pipe.set_ip_adapter_scale(ip_scale)
+                    generation_kwargs["ip_adapter_image"] = reference_img
+                    print(f"✅ Using IP-Adapter with reference image (scale={ip_scale})")
+                else:
+                    print("⚠️ set_ip_adapter_scale not available, using ControlNet only")
+            else:
+                print("⚠️ No reference image provided, using ControlNet only")
+        except Exception as e:
+            print(f"⚠️ IP-Adapter error: {e}, using ControlNet only")
         
         result = pipe(**generation_kwargs).images[0]
         
@@ -199,8 +206,13 @@ def handler(event):
         }
         
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"❌ ERROR in handler: {error_trace}")
         return {
-            "error": str(e)
+            "error": str(e),
+            "error_type": type(e).__name__,
+            "traceback": error_trace
         }
 
 # RunPod serverless entry point
