@@ -3,6 +3,9 @@ FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 
 WORKDIR /app
 
+# Set CUDA memory optimization
+ENV PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
 # Install Python dependencies
 RUN pip install --no-cache-dir \
     diffusers==0.31.0 \
