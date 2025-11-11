@@ -124,6 +124,7 @@ def handler(event):
         # Decode conditioning images
         depth_img = decode_base64_image(input_data["depth_image"])
         normal_img = decode_base64_image(input_data["normal_image"])
+        reference_img = decode_base64_image(input_data.get("reference_image")) if input_data.get("reference_image") else None
         
         # Preserve aspect ratio from depth
         target_width = depth_img.width
@@ -136,6 +137,8 @@ def handler(event):
         # Resize conditioning images to match
         depth_img = depth_img.resize((target_width, target_height), Image.LANCZOS)
         normal_img = normal_img.resize((target_width, target_height), Image.LANCZOS)
+        if reference_img:
+            reference_img = reference_img.resize((target_width, target_height), Image.LANCZOS)
         
         # Get parameters
         prompt = input_data.get("prompt", "professional product photography")
@@ -155,21 +158,28 @@ def handler(event):
         # Setup generator
         generator = torch.Generator(device="cuda").manual_seed(seed)
         
-        # Generate image with ControlNet
+        # Generate image with ControlNet + IP-Adapter
         print(f"🎨 Generating {target_width}x{target_height} with seed {seed}...")
-        result = pipe(
-            prompt=prompt,
-            negative_prompt=negative_prompt,
-            image=[depth_img, normal_img],
-            controlnet_conditioning_scale=cn_scales,
-            control_guidance_start=0.0,
-            control_guidance_end=1.0,
-            num_inference_steps=num_steps,
-            guidance_scale=guidance,
-            generator=generator,
-            height=target_height,
-            width=target_width
-        ).images[0]
+        
+        generation_kwargs = {
+            "prompt": prompt,
+            "negative_prompt": negative_prompt,
+            "image": [depth_img, normal_img],
+            "controlnet_conditioning_scale": cn_scales,
+            "control_guidance_start": 0.0,
+            "control_guidance_end": 1.0,
+            "num_inference_steps": num_steps,
+            "guidance_scale": guidance,
+            "generator": generator,
+            "height": target_height,
+            "width": target_width
+        }
+        
+        # Add IP-Adapter image if provided
+        if reference_img:
+            generation_kwargs["ip_adapter_image"] = reference_img
+        
+        result = pipe(**generation_kwargs).images[0]
         
         # Encode result
         result_base64 = encode_image_to_base64(result)
