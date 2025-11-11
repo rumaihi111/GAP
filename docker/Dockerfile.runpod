@@ -1,1 +1,28 @@
-[I'll provide this too]
+# RunPod Docker Container for GAP Diffusion
+FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
+
+WORKDIR /app
+
+# Install Python dependencies
+RUN pip install --no-cache-dir \
+    diffusers==0.31.0 \
+    transformers==4.45.0 \
+    accelerate==1.2.0 \
+    runpod==1.7.4 \
+    xformers==0.0.28.post1 \
+    safetensors \
+    Pillow \
+    python-dotenv \
+    git+https://github.com/tencent-ailab/IP-Adapter.git
+
+# Copy handler
+COPY diffusion/runpod_handler.py /app/handler.py
+
+# Copy test script
+COPY tests/test_diffusion_dummy.py /app/tests/test_diffusion_dummy.py
+
+# Models will download on first run (cold start ~60s)
+# This keeps Docker image small and buildable on low-memory machines
+
+# Run handler
+CMD ["python", "-u", "/app/handler.py"]
