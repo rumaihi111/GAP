@@ -96,7 +96,7 @@ def generate_with_gap(gap: dict, scene: Scene, seed: int = 42, timeout: int = 24
         "deformed, ugly, bad anatomy"
     )
     
-    # Prepare payload with REBALANCED conditioning
+    # Prepare payload with BALANCED conditioning
     payload = {
         'input': {
             "depth_image": encode_image(depth_map),
@@ -107,8 +107,8 @@ def generate_with_gap(gap: dict, scene: Scene, seed: int = 42, timeout: int = 24
             "seed": seed,
             "num_inference_steps": 50,  # More steps
             "guidance_scale": 7.5,
-            "controlnet_conditioning_scale": [0.5, 0.4],  # WEAKENED - less geometric dominance
-            "ip_adapter_scale": 0.95  # STRENGTHENED - more appearance transfer
+            "controlnet_conditioning_scale": [0.7, 0.6],  # MODERATE - balance geometry
+            "ip_adapter_scale": 0.88  # MODERATE-HIGH - balance appearance
         }
     }
     
