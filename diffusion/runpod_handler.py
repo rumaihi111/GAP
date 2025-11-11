@@ -67,8 +67,10 @@ def load_models():
         print("⚠️ Continuing without IP-Adapter (will use ControlNet only)")
     
     # Optimizations
+    print("⚙️ Applying optimizations...")
     pipe.enable_model_cpu_offload()
     pipe.enable_vae_slicing()
+    pipe.enable_vae_tiling()  # ADD THIS LINE
     
     # Use DPM++ 2M scheduler
     pipe.scheduler = DPMSolverMultistepScheduler.from_config(
