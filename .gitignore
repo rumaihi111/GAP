@@ -1,12 +1,37 @@
+# Nested git repos
+AnimateDiff/
+GAP/
+
+# Python
 __pycache__/
-*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# Secrets
 .env
-*.log
+.env.*
+!.env.example
+.runpod.local
+
+# Outputs
 output/
-assets/*.glb
-assets/*.usd
-models/
-*.pth
-*.safetensors
-tmp/
-.cache/
+*.gif
+*.mp4
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Temp
+*.log
+.DS_Store
