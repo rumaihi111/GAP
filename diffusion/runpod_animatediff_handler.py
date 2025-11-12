@@ -147,3 +147,17 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
 
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+# Allow running this file directly in a serverless container without
+# relying on an external module entrypoint. When invoked as
+# `python /app/handler.py`, this will register the handler with
+# RunPod's serverless runtime and begin processing requests.
+if __name__ == "__main__":
+    try:
+        import runpod
+        runpod.serverless.start({"handler": handler})
+    except Exception as _e:
+        # Surface the error to container logs for faster debugging
+        print(f"[serverless] failed to start: {_e}")
+        raise
