@@ -1,0 +1,44 @@
+FROM runpod/pytorch:2.1.0-py3.10-cuda11.8.0-devel-ubuntu22.04
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git wget curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir \
+    runpod \
+    diffusers==0.29.1 \
+    transformers \
+    accelerate \
+    safetensors \
+    huggingface_hub==0.23.5 \
+    pillow \
+    torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+# Clone AnimateDiff
+RUN git clone https://github.com/guoyww/AnimateDiff.git /app/AnimateDiff && \
+    pip install --no-cache-dir -r /app/AnimateDiff/requirements.txt || true
+
+# Download motion module
+RUN mkdir -p /app/models/Motion_Module && \
+    wget -q -O /app/models/Motion_Module/mm_sd_v15_v2.ckpt \
+    https://huggingface.co/guoyww/animatediff/resolve/main/mm_sd_v15_v2.ckpt
+
+# Copy handler
+COPY diffusion/runpod_animatediff_handler.py /app/handler.py
+
+# Set cache directories
+ENV HF_HOME=/cache/hf \
+    TORCH_HOME=/cache/torch \
+    TRANSFORMERS_CACHE=/cache/hf/transformers \
+    DIFFUSERS_CACHE=/cache/hf/diffusers \
+    MOTION_MODULE_PATH=/app/models/Motion_Module/mm_sd_v15_v2.ckpt
+
+RUN mkdir -p /cache/hf /cache/torch
+
+# RunPod serverless start command
+CMD python -u -m runpod.serverless.start --handler_module handler --handler_function handler
