@@ -7,21 +7,29 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git wget curl && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir \
+# Install Python dependencies in separate steps for better error handling
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+
+# Install core dependencies first
+RUN pip install --no-cache-dir \
     runpod \
-    diffusers==0.29.1 \
-    transformers \
-    accelerate \
-    safetensors \
-    huggingface_hub==0.23.5 \
     pillow \
-    torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+    safetensors \
+    accelerate
+
+# Install specific versions that work together
+RUN pip install --no-cache-dir \
+    diffusers==0.29.1 \
+    huggingface_hub==0.23.5 \
+    transformers
+
+# PyTorch is already in base image, but install vision/audio if needed
+RUN pip install --no-cache-dir torchvision torchaudio || true
 
 # Clone AnimateDiff
 RUN git clone https://github.com/guoyww/AnimateDiff.git /app/AnimateDiff && \
-    pip install --no-cache-dir -r /app/AnimateDiff/requirements.txt || true
+    cd /app/AnimateDiff && \
+    pip install --no-cache-dir -r requirements.txt || echo "AnimateDiff requirements partial install"
 
 # Download motion module
 RUN mkdir -p /app/models/Motion_Module && \
