@@ -11,3 +11,5 @@ exporting/
 *.mp4
 *.webm
 tools/runpod/RUNPOD_API_KEY
+tests/
+output/
