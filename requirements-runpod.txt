@@ -21,6 +21,6 @@ numpy==1.26.4
 tqdm==4.66.5
 runpod==1.7.4
 python-dotenv==1.0.1
-# Optional CLIP + IP-Adapter (leave if needed)
-git+https://github.com/openai/CLIP.git
-git+https://github.com/tencent-ailab/IP-Adapter.git
+# Optional (add later if needed to reduce build sizes)
+# git+https://github.com/openai/CLIP.git
+# git+https://github.com/tencent-ailab/IP-Adapter.git

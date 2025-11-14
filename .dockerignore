@@ -1,0 +1,13 @@
+.git
+**/__pycache__/
+models/
+*.log
+logs*/
+exporting/
+8 photos/
+*.png
+*.jpg
+*.jpeg
+*.mp4
+*.webm
+tools/runpod/RUNPOD_API_KEY
