@@ -68,9 +68,34 @@ def _decode_manifest(manifest_b64: str) -> Dict[str, Any]:
     return json.loads(data)
 
 def _load_depth_and_refs(manifest: Dict[str, Any], frames: int):
+    """Load depth/reference images from manifest (supports both file paths and base64)."""
+    import io
     angles = sorted(manifest["views"].keys(), key=lambda a: int(a))
-    depths = [Image.open(manifest["views"][a]["depth"]).convert("RGB") for a in angles]
-    refs = [Image.open(manifest["views"][a]["reference"]).convert("RGB") for a in angles]
+    
+    depths = []
+    refs = []
+    for angle in angles:
+        view = manifest["views"][angle]
+        
+        # Load depth (try base64 first, then path)
+        if "depth_b64" in view:
+            depth_data = base64.b64decode(view["depth_b64"])
+            depths.append(Image.open(io.BytesIO(depth_data)).convert("RGB"))
+        elif "depth" in view:
+            depths.append(Image.open(view["depth"]).convert("RGB"))
+        else:
+            raise ValueError(f"View {angle} missing depth or depth_b64")
+        
+        # Load reference (optional, try base64 first, then path)
+        if "reference_b64" in view:
+            ref_data = base64.b64decode(view["reference_b64"])
+            refs.append(Image.open(io.BytesIO(ref_data)).convert("RGB"))
+        elif "reference" in view:
+            refs.append(Image.open(view["reference"]).convert("RGB"))
+        else:
+            # Use depth as reference if not provided
+            refs.append(depths[-1])
+    
     # Repeat to reach target frames
     rep = (frames + len(depths) - 1) // len(depths)
     depths = (depths * rep)[:frames]
