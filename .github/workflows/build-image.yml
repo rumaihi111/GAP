@@ -3,10 +3,6 @@ name: build-and-push-serverless-image
 on:
   push:
     branches: [ main ]
-    paths:
-      - docs/Orumaihinew.dockerfile
-      - requirements-runpod.txt
-      - diffusion/**
   workflow_dispatch:
 
 concurrency:
@@ -30,6 +26,11 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Show changed files (debug)
+        run: |
+          echo "Changed files in this commit:";
+          git diff --name-only HEAD~1 || true
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
