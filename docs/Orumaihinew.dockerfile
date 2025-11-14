@@ -1,4 +1,4 @@
-FROM runpod/pytorch:2.1.0-py3.10-cuda11.8.0-runtime-ubuntu22.04
+FROM runpod/pytorch:2.1.0-py3.10-cuda11.8.0-devel-ubuntu22.04
 
 ENV HF_HOME=/runpod-volume/hf \
     HUGGINGFACE_HUB_CACHE=/runpod-volume/hf \
