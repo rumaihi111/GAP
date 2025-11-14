@@ -14,4 +14,4 @@ COPY requirements-runpod.txt requirements-runpod.txt
 RUN pip install --upgrade pip && pip install -r requirements-runpod.txt
 RUN pip install runpod==1.7.0 diffusers==0.29.2 transformers==4.44.2 accelerate==0.34.2 safetensors==0.4.4 pillow==10.4.0 imageio==2.34.1 imageio-ffmpeg==0.4.9 einops==0.7.0 opencv-python-headless==4.10.0.84
 
-CMD ["python","-u","diffusion/runpod_animatediff_handler.py"]
+CMD ["python","-u","diffusion/runpod_animatediff_handler.py"]# trigger
