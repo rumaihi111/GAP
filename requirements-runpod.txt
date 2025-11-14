@@ -8,7 +8,6 @@ diffusers==0.31.0
 transformers==4.45.0
 accelerate==1.2.0
 safetensors==0.4.3
-xformers==0.0.28.post1
 controlnet-aux==0.0.8
 # Imaging / media
 opencv-python-headless==4.10.0.84
@@ -22,8 +21,6 @@ numpy==1.26.4
 tqdm==4.66.5
 runpod==1.7.4
 python-dotenv==1.0.1
-# Optional model repos (git installs)
-# CLIP used by some diffusion pipelines
+# Optional CLIP + IP-Adapter (leave if needed)
 git+https://github.com/openai/CLIP.git
-# IP-Adapter (leave even if not immediately used for extensibility)
 git+https://github.com/tencent-ailab/IP-Adapter.git

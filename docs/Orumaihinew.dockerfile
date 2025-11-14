@@ -9,12 +9,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /
 
 WORKDIR /app
 
-# Copy only requirements first to leverage Docker layer cache
 COPY requirements-runpod.txt /tmp/requirements-runpod.txt
 RUN python3 -m pip install --upgrade pip && \
     pip install --no-cache-dir -r /tmp/requirements-runpod.txt
 
-# Copy the handler code
 COPY diffusion/ ./diffusion/
 
 CMD ["python3","-u","diffusion/runpod_animatediff_handler.py"]
