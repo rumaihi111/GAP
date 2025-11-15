@@ -24,7 +24,7 @@ AnimateDiffPipeline = _maybe_import_animatediff()
 
 # Models (SD 1.5 path is much lighter than SDXL)
 BASE_MODEL_ID = os.environ.get("BASE_MODEL_ID", "runwayml/stable-diffusion-v1-5")
-CONTROLNET_ID = os.environ.get("CONTROLNET_ID", "lllyasviel/controlnet-depth")
+CONTROLNET_ID = os.environ.get("CONTROLNET_ID", "lllyasviel/sd-controlnet-depth")
 MOTION_MODULE_PATH = os.environ.get("MOTION_MODULE_PATH", "/app/models/Motion_Module/mm_sd_v15_v2.ckpt")
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
