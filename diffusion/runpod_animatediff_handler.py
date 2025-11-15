@@ -4,9 +4,17 @@ from pathlib import Path
 from typing import Dict, Any, List
 from PIL import Image
 
+import sys
+sys.path.append('/app/third_party/AnimateDiff')
+from animatediff.models.unet import UNet3DConditionModel
+from animatediff.pipelines.pipeline_animation import AnimationPipeline
+
 import torch
 from diffusers import ControlNetModel, StableDiffusionControlNetPipeline
 import requests
+
+# Import our custom reference-guided attention module
+from diffusion.reference_attention import add_reference_guidance
 
 # Try to import AnimateDiff (optional). We’ll fall back to per-frame generation if missing.
 def _maybe_import_animatediff():
@@ -26,11 +34,12 @@ AnimateDiffPipeline = _maybe_import_animatediff()
 BASE_MODEL_ID = os.environ.get("BASE_MODEL_ID", "runwayml/stable-diffusion-v1-5")
 CONTROLNET_ID = os.environ.get("CONTROLNET_ID", "lllyasviel/sd-controlnet-depth")
 MOTION_MODULE_PATH = os.environ.get("MOTION_MODULE_PATH", "/app/models/Motion_Module/mm_sd_v15_v2.ckpt")
+IP_ADAPTER_MODEL = os.environ.get("IP_ADAPTER_MODEL", "h94/IP-Adapter")
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 DTYPE = torch.float16 if torch.cuda.is_available() else torch.float32
 
-_cached = {"pipe": None, "mode": None}
+_cached = {"pipe": None, "mode": None, "ip_adapter_loaded": False}
 
 def _load_pipelines():
     if _cached["pipe"] is not None:
@@ -209,8 +218,34 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
         depths, refs = _load_depth_and_refs(manifest_json, frames)
 
         pipe, mode = _load_pipelines()
+        
+        # Load IP-Adapter for reference image conditioning (preserves visual identity)
+        try:
+            if not _cached.get("ip_adapter_loaded"):
+                from diffusers import IPAdapterMixin
+                if hasattr(pipe, 'load_ip_adapter'):
+                    pipe.load_ip_adapter(IP_ADAPTER_MODEL, subfolder="models", weight_name="ip-adapter_sd15.bin")
+                    _cached["ip_adapter_loaded"] = True
+                    print("[IP-Adapter] Loaded for identity preservation")
+        except Exception as e:
+            print(f"[IP-Adapter] Failed to load: {e}, continuing without it")
+
+        # Enable custom reference-guided generation (preserves visual identity)
+        ref_strength = float(event["input"].get("reference_strength", 0.85))
+        injector = None
+        if refs and mode == "animatediff":
+            try:
+                injector = add_reference_guidance(pipe, refs, strength=ref_strength)
+                print(f"[Reference Guidance] Enabled with strength {ref_strength}")
+            except Exception as e:
+                print(f"[Reference Guidance] Failed: {e}, continuing without it")
 
         if mode == "animatediff":
+            # Use first reference image for IP-Adapter conditioning
+            ip_adapter_kwargs = {}
+            if _cached.get("ip_adapter_loaded") and refs:
+                ip_adapter_kwargs = {"ip_adapter_image": refs[0]}
+            
             result = pipe(
                 prompt=prompt,
                 controlnet_conditioning_frames=depths,
@@ -218,8 +253,13 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
                 num_inference_steps=steps,
                 guidance_scale=guidance,
                 controlnet_conditioning_scale=cn_scale,
+                **ip_adapter_kwargs
             )
             vid_frames = result.frames[0]
+            
+            # Clean up reference guidance
+            if injector:
+                injector.disable()
         else:
             # Per-frame fallback; ignores refs to keep it simple
             vid_frames = []
