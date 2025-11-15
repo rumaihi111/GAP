@@ -1,20 +1,4 @@
 #!/usr/bin/env python3
-import runpod
-import json
-import base64
-import os
-import sys
-from pathlib import Path
-import requests
-from diffusion.reference_attention import add_reference_guidance
-from PIL import Image
-import torch
-
-sys.path.append('/app/third_party/AnimateDiff')
-from animatediff.models.unet import UNet3DConditionModel
-from animatediff.pipelines.pipeline_animation import AnimationPipeline
-
-#!/usr/bin/env python3
 import os, json, base64, tempfile
 from pathlib import Path
 from typing import Dict, Any, List
@@ -28,18 +12,6 @@ import requests
 from diffusion.reference_attention import add_reference_guidance
 
 # Try to import AnimateDiff (optional). We'll fall back to per-frame generation if missing.
-def _maybe_import_animatediff():
-    try:
-        ad_root = Path(__file__).resolve().parents[1] / "AnimateDiff"
-        if ad_root.exists():
-            import sys
-            sys.path.append(str(ad_root))
-        from animatediff.pipelines.pipeline_animatediff import AnimateDiffPipeline  # type: ignore
-        return AnimateDiffPipeline
-    except Exception:
-        return None
-
-AnimateDiffPipeline = _maybe_import_animatediff()
 def _maybe_import_animatediff():
     try:
         ad_root = Path(__file__).resolve().parents[1] / "AnimateDiff"
