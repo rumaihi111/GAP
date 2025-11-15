@@ -6,6 +6,7 @@ from PIL import Image
 
 import torch
 from diffusers import ControlNetModel, StableDiffusionControlNetPipeline
+import requests
 
 # Try to import AnimateDiff (optional). We’ll fall back to per-frame generation if missing.
 def _maybe_import_animatediff():
@@ -122,17 +123,90 @@ def handler(event: Dict[str, Any]) -> Dict[str, Any]:
       }
     """
     try:
-        manifest_b64 = event["input"]["manifest_b64"]
-        prompt = event["input"].get("prompt", "studio product rotation, clean white background")
-        frames = int(event["input"].get("frames", 24))
-        steps = int(event["input"].get("steps", 25))
-        guidance = float(event["input"].get("guidance", 7.5))
-        cn_scale = float(event["input"].get("controlnet_scale", 0.6))
-        fps = int(event["input"].get("fps", 8))
-        fmt = event["input"].get("format", "gif")
+        job_input = event.get("input", {})
+        
+        # Support both manifest_b64 (embedded) and manifest_url (hosted)
+        manifest_b64 = job_input.get("manifest_b64")
+        manifest_url = job_input.get("manifest_url")
+        
+        if manifest_url:
+            # Download manifest from URL
+            try:
+                response = requests.get(manifest_url, timeout=30)
+                response.raise_for_status()
+                manifest_json = response.json()
+            except Exception as e:
+                return {"status": "error", "message": f"Failed to download manifest from URL: {str(e)}"}
+        elif manifest_b64:
+            # Decode embedded manifest
+            try:
+                manifest_json = json.loads(base64.b64decode(manifest_b64))
+            except Exception as e:
+                return {"status": "error", "message": f"Failed to decode manifest_b64: {str(e)}"}
+        else:
+            return {"status": "error", "message": "Missing manifest_b64 or manifest_url"}
+        
+        # Decode base64 assets if provided
+        # For each view, support URLs, base64, and local paths
+        for view_id, view_data in manifest_json.get("views", {}).items():
+            # Handle depth: URL -> base64 -> local path
+            if "depth_url" in view_data:
+                try:
+                    depth_response = requests.get(view_data["depth_url"], timeout=30)
+                    depth_response.raise_for_status()
+                    view_data["depth_b64"] = base64.b64encode(depth_response.content).decode()
+                except Exception as e:
+                    return {"status": "error", "message": f"Failed to download depth from {view_data['depth_url']}: {str(e)}"}
+            elif "depth_b64" in view_data:
+                # Already has base64, keep it
+                pass
+            elif "depth" in view_data:
+                # Try loading from local path
+                depth_path = Path(view_data["depth"])
+                if depth_path.exists():
+                    view_data["depth_b64"] = base64.b64encode(depth_path.read_bytes()).decode()
+                else:
+                    return {"status": "error", "message": f"Depth file not found: {depth_path}"}
+         
+            # Handle reference: URL -> base64 -> local path
+            if "reference_url" in view_data:
+                try:
+                    ref_response = requests.get(view_data["reference_url"], timeout=30)
+                    ref_response.raise_for_status()
+                    view_data["reference_b64"] = base64.b64encode(ref_response.content).decode()
+                except Exception as e:
+                    return {"status": "error", "message": f"Failed to download reference from {view_data['reference_url']}: {str(e)}"}
+            elif "reference_b64" in view_data:
+                # Already has base64, keep it
+                pass
+            elif "reference" in view_data:
+                # Try loading from local path
+                ref_path = Path(view_data["reference"])
+                if ref_path.exists():
+                    view_data["reference_b64"] = base64.b64encode(ref_path.read_bytes()).decode()
+                else:
+                    return {"status": "error", "message": f"Reference file not found: {ref_path}"}
+            
+            # Now write the base64 data to disk for the pipeline to use
+            if "depth_b64" in view_data:
+                depth_path = Path(view_data["depth"])
+                depth_path.parent.mkdir(parents=True, exist_ok=True)
+                depth_path.write_bytes(base64.b64decode(view_data["depth_b64"]))
+            
+            if "reference_b64" in view_data:
+                ref_path = Path(view_data["reference"])
+                ref_path.parent.mkdir(parents=True, exist_ok=True)
+                ref_path.write_bytes(base64.b64decode(view_data["reference_b64"]))
+        
+        prompt = job_input.get("prompt", "studio product rotation, clean white background")
+        frames = int(job_input.get("frames", 24))
+        steps = int(job_input.get("steps", 25))
+        guidance = float(job_input.get("guidance", 7.5))
+        cn_scale = float(job_input.get("controlnet_scale", 0.6))
+        fps = int(job_input.get("fps", 8))
+        fmt = job_input.get("format", "gif")
 
-        manifest = _decode_manifest(manifest_b64)
-        depths, refs = _load_depth_and_refs(manifest, frames)
+        depths, refs = _load_depth_and_refs(manifest_json, frames)
 
         pipe, mode = _load_pipelines()
 
